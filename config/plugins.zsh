@@ -1,43 +1,50 @@
 # ~/.config/zsh/plugins.zsh
 
-# 1. 定义插件保存根目录
+# 1. 插件根目录
 ZPLUGINDIR="${ZDOTDIR:-$HOME/.config/zsh}/plugins"
 
-# 2. 自动下载与加载函数
+# 2. 缺失即下载，然后加载
 _zplugin_load() {
   local plugin_path="${ZPLUGINDIR}/${2}"
   if [[ ! -d "$plugin_path" ]]; then
+    if (( ! $+commands[git] )); then
+      print -u2 "zshkit: 缺插件 ${2}，但 PATH 里没有 git，无法自动下载"
+      return 0
+    fi
     mkdir -p "$ZPLUGINDIR"
-    echo "Installing ${2} ..."
-    git clone --depth=1 "https://github.com/${1}/${2}" "$plugin_path" \
-      || { echo "ERROR: failed to install ${2}" >&2; return 1; }
+    print "Installing ${2} ..."
+    if ! git clone --depth=1 "https://github.com/${1}/${2}" "$plugin_path"; then
+      print -u2 "zshkit: ${2} 下载失败，跳过（重开窗口会再试一次）"
+      rm -rf "$plugin_path"
+      return 0
+    fi
   fi
   source "${plugin_path}/${2}.plugin.zsh"
 }
 
-# 3. 一键更新插件函数
+# 3. 一键更新（只动有 .git 的第三方插件）
 zplugin-update() {
   local dir
-  for dir in "${ZPLUGINDIR}"/*/(/N); do
+  for dir in "${ZPLUGINDIR}"/*(/N); do
     if [[ -d "$dir/.git" ]]; then
-      echo "Updating ${dir:t}..."
+      print "Updating ${dir:t}..."
       git -C "$dir" pull --ff-only
     else
-      echo "Skipping ${dir:t}（本地自写插件，无 git 仓库）"
+      print "Skipping ${dir:t}（自写插件，无 git 仓库）"
     fi
   done
 }
 
-# 4. 真正加载的插件
+# 4. 加载的插件（顺序有讲究，别随意调整）
 _zplugin_load zdharma-continuum fast-syntax-highlighting             # 语法高亮
 _zplugin_load zsh-users zsh-autosuggestions                          # 自动补全
 _zplugin_load zsh-users zsh-history-substring-search                 # 历史搜索
-# _zplugin_load jeffreytse zsh-vi-mode                               # nvim模式使用zsh
+# _zplugin_load jeffreytse zsh-vi-mode                               # nvim 模式使用 zsh
 
 
 
 # ==========================================
-# 自建插件（*.jeasin = 自己写的，不是从 GitHub 拉的）
+# 自建插件（*.jeasin = 自己写的，随仓库一起安装）
 # ==========================================
 # 约定：$ZPLUGINDIR/<名字>.jeasin/<名字>.jeasin.plugin.zsh
 # 放在这里统一 source，.zshrc 里不再逐个引用；新增自写插件只要建目录即可。

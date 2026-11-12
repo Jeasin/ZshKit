@@ -1,7 +1,8 @@
 # ZshKit
 
 一套走 XDG 布局的 macOS Zsh 配置：XDG 化、无插件管理器、不依赖 oh-my-zsh。
-插件源码随仓库一起分发，安装时不需要 Git。
+仓库里只放自己写的插件；三个第三方插件不打包，首次启动时由 `plugins.zsh`
+自动 clone 到 `~/.config/zsh/plugins/`。
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Jeasin/ZshKit/main/install.sh | zsh
@@ -21,7 +22,10 @@ Homebrew 没装的话先装：
 
 安装脚本会：检测系统与架构（`/opt/homebrew`、`/usr/local` 都支持）→ 按需安装缺失依赖
 → 下载 main 分支最新 tarball → 校验语法 → 原子替换配置 → 替换 `/etc/zshenv`
-→ 创建 XDG 目录 → 退出时清理所有临时文件。
+→ 创建 XDG 目录 → 首次启动时顺带拉取三个第三方插件 → 退出时清理所有临时文件。
+
+插件用 `git clone --depth=1` 拉到 `~/.config/zsh/plugins/`，所以第一次启动需要能联网
+（也需要 `git`，macOS 装的 Xcode Command Line Tools 自带）。
 
 安装完成后**新开一个终端窗口**才会生效（当前窗口仍是旧配置）。
 
@@ -78,14 +82,30 @@ ZshKit/
 │   ├── aliases.zsh         别名与函数
 │   ├── bindings.zsh        键位
 │   ├── fzf.zsh             fzf UI / 预览 / 自定义 widget
-│   ├── plugins.zsh         插件加载与自更新
+│   ├── plugins.zsh         插件加载（缺失即下载）与 zplugin-update
 │   ├── prompt.zsh          starship 初始化
 │   ├── secrets.zsh         空模板（个人密钥放这里）
 │   ├── starship.toml       提示符样式
-│   └── plugins/            插件源码，随仓库分发
+│   └── plugins/            只有自写插件：*.jeasin
 ├── system/
 │   └── zshenv              → 安装到 /etc/zshenv
 └── install.sh
+```
+
+## 插件
+
+| 插件 | 来源 | 谁负责装 |
+| --- | --- | --- |
+| fast-syntax-highlighting | zdharma-continuum | `plugins.zsh` 首次加载时 clone |
+| zsh-autosuggestions | zsh-users | 同上 |
+| zsh-history-substring-search | zsh-users | 同上 |
+| grayprompt.jeasin / nfc.jeasin / sessionlog.jeasin | 本仓库 | 随配置直接安装 |
+
+插件目录缺失时不影响启动，只会在 stderr 提示一行；下次开窗口会自动重试。
+升级上游插件：
+
+```bash
+zplugin-update      # 只 pull 有 .git 的目录，*.jeasin 跳过
 ```
 
 ## 几个要知道的点

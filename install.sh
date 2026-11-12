@@ -5,6 +5,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/Jeasin/ZshKit/main/install.sh | zsh
 #
 # 行为：下载 main 分支最新配置 → 全量替换 ~/.config/zsh 与 /etc/zshenv。
+#       第三方插件不打包，首次启动时由 plugins.zsh 自动 clone。
 # 不做合并、不备份、不迁移历史与缓存。
 # ==========================================================
 set -Eeuo pipefail
@@ -153,15 +154,15 @@ for d in "$TMP"/*/; do SRC="${d%/}"; break; done
 [ -f "$SRC/install.sh" ] && [ -d "$SRC/config" ] || die "压缩包结构异常，缺少 config/"
 
 missing=""
-for f in .zshenv .zprofile .zshrc aliases.zsh bindings.zsh fzf.zsh plugins.zsh prompt.zsh; do
+for f in .zshenv .zprofile .zshrc aliases.zsh bindings.zsh fzf.zsh plugins.zsh prompt.zsh secrets.zsh; do
   [ -f "$SRC/config/$f" ] || missing="$missing $f"
 done
 [ -z "$missing" ] || die "压缩包缺少配置：$missing"
 
-for p in fast-syntax-highlighting zsh-autosuggestions zsh-history-substring-search; do
-  [ -d "$SRC/config/plugins/$p" ] || die "压缩包缺少插件：$p"
+for p in grayprompt.jeasin nfc.jeasin sessionlog.jeasin; do
+  [ -d "$SRC/config/plugins/$p" ] || die "压缩包缺少自写插件：$p"
 done
-ok "配置与插件完整"
+ok "配置完整（自写插件随包，第三方插件首次启动时自动下载）"
 
 # ----------------------------------------------------------
 # 6. 依赖
@@ -267,18 +268,44 @@ else
   warn "ZDOTDIR 解析为 [${got_zdotdir:-空}]，预期 $CONFIG_DIR"
 fi
 
+# 首次启动会把缺失的第三方插件 clone 下来（节流成一次，2MB 左右）
+info "拉取第三方插件（首次需要联网）"
+if have git; then
+  shell_err="$(ZSH_NO_SESSION_LOG=1 env ZDOTDIR="$CONFIG_DIR" HOME="$HOME" PATH="$PATH" \
+    /bin/zsh -i -c 'exit' 2>&1 || true)"
+else
+  shell_err=""
+  warn "PATH 里没有 git，三个第三方插件需自行安装"
+fi
+
+plug_bad=""
+for p in fast-syntax-highlighting zsh-autosuggestions zsh-history-substring-search; do
+  [ -f "$CONFIG_DIR/plugins/$p/$p.plugin.zsh" ] || [ -f "$CONFIG_DIR/plugins/$p/$p.zsh" ] || plug_bad="$plug_bad $p"
+done
+for p in grayprompt.jeasin nfc.jeasin sessionlog.jeasin; do
+  [ -d "$CONFIG_DIR/plugins/$p" ] || plug_bad="$plug_bad $p"
+done
+if [ -n "$plug_bad" ]; then
+  warn "插件未就位：$plug_bad（重开窗口会自动重试下载）"
+else
+  ok "插件就位（3 个上游 + 3 个自写）"
+fi
+
 # 依赖复查
 still_missing=""
 for cmd in starship zoxide fzf fd eza bat rg; do
   have "$cmd" || still_missing="$still_missing $cmd"
 done
 
-# 再用新配置真跑一次交互 shell（不录会话），确认没有启动报错
-shell_err="$(ZSH_NO_SESSION_LOG=1 env ZDOTDIR="$CONFIG_DIR" HOME="$HOME" PATH="$PATH" \
-  /bin/zsh -i -c 'exit' 2>&1 || true)"
 if [ -n "$shell_err" ]; then
-  warn "启动时输出了下列内容（可能是提示信息）："
-  printf '       %s\n' "$shell_err"
+  # 首次安装时这里的输出是 clone 进度，属正常；过滤后仍剩下的才算异常
+  shell_noise="$(printf '%s\n' "$shell_err" | grep -v -e 'Cloning into' -e '^Installing ' || true)"
+  if [ -n "$shell_noise" ]; then
+    warn "新配置启动时输出了下列内容："
+    printf '       %s\n' "$shell_noise"
+  else
+    ok "交互式启动无报错"
+  fi
 else
   ok "交互式启动无报错"
 fi
@@ -293,5 +320,6 @@ fi
 printf '\n%s安装完成%s\n\n' "$C_GREEN" "$C_RESET"
 printf '  下一步：%s新开一个终端窗口%s（当前窗口仍是旧配置）\n' "$C_YELLOW" "$C_RESET"
 printf '  更新：  重新执行同一条 curl 命令即可全量同步\n'
+printf '  插件：  zplugin-update 更新上游插件（自写插件不动）\n'
 printf '  密钥：  %s 目前是空模板\n' "$CONFIG_DIR/secrets.zsh"
 printf '  卸载：  rm -rf %s，并恢复 %s/zshenv\n\n' "$CONFIG_DIR" "$ETC_DIR"
