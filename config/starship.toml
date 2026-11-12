@@ -1,0 +1,64 @@
+"$schema" = 'https://starship.rs/config-schema.json'
+
+add_newline = false
+
+# 提示符显示模块与顺序
+format = "$directory$os$git_branch$git_status$nodejs$rust$golang$php $character"
+
+# 操作系统图标设置 (专门保留了 Macos 支持)
+[os]
+disabled = false
+format = "$symbol "
+
+[os.symbols]
+Macos   = ""   
+Arch    = "󰣇"
+Ubuntu  = "󰕈"
+Artix   = "󰣇"
+CachyOS = "󰣇"
+
+# 路径目录格式
+[directory]
+format            = "$path "
+truncation_length = 4
+truncate_to_repo  = true
+
+# Git 分支 (修复分支图标 )
+[git_branch]
+symbol = ""
+format = "$symbol $branch "
+
+# Git 状态（提交、改动、冲突提示）
+[git_status]
+format     = "($ahead_behind$staged$modified$untracked$deleted$conflicted)"
+ahead      = "⇡$count "
+behind     = "⇣$count "
+diverged   = "⇡$ahead_count⇣$behind_count "
+staged     = "+$count "
+modified   = "●$count "
+untracked  = "?$count "
+deleted    = "✘$count "
+conflicted = "⚡$count "
+
+# 编程语言环境图标 (已修复 Node / Rust / Go / PHP 的特有图标)
+[nodejs]
+symbol = ""
+format = "$symbol $version "
+
+[rust]
+symbol = ""
+format = "$symbol $version "
+
+[golang]
+symbol = ""
+format = "$symbol $version "
+
+[php]
+symbol = "🐘"
+format = "$symbol $version "
+
+# 提示符箭头符号 (支持 zsh-vi-mode 的普通模式 ❮ 切换)
+[character]
+success_symbol = "❯"
+error_symbol   = "❯"
+vimcmd_symbol  = "❮"

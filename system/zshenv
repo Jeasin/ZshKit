@@ -1,0 +1,17 @@
+# ==========================================================
+# /etc/zshenv —— ZshKit 引导文件
+#
+# 这是"dotfiles 走 XDG"唯一无法避免的系统级介入点：
+# /etc/zshenv 是所有 zsh 实例（含非交互）启动时最先读取的文件，
+# 只有在这里设好 ZDOTDIR，zsh 才会去 ~/.config/zsh 读其余配置。
+#
+# 由 install.sh 安装（需要 sudo），也可以手动 cp 到 /etc/zshenv。
+# ==========================================================
+
+if [[ -z "$XDG_CONFIG_HOME" ]]; then
+  export XDG_CONFIG_HOME="$HOME/.config"
+fi
+
+if [[ -d "$XDG_CONFIG_HOME/zsh" ]]; then
+  export ZDOTDIR="$XDG_CONFIG_HOME/zsh"
+fi
