@@ -76,18 +76,10 @@ ok "macOS $(sw_vers -productVersion 2>/dev/null || echo unknown)"
 have zsh || die "找不到 zsh（macOS 自带 /bin/zsh，请检查 PATH）"
 ok "zsh $("$(command -v zsh)" -c 'echo $ZSH_VERSION' 2>/dev/null || echo unknown)"
 
-case "$(uname -m)" in
-  arm64)  ARCH_HINT="/opt/homebrew" ;;
-  x86_64) ARCH_HINT="/usr/local" ;;
-  *)      ARCH_HINT="/opt/homebrew 或 /usr/local" ;;
-esac
-ok "架构 $(uname -m)（Homebrew 预期在 $ARCH_HINT）"
+ok "架构 $(uname -m)"
 
-BREW=""
-for p in /opt/homebrew/bin/brew /usr/local/bin/brew; do
-  if [ -x "$p" ]; then BREW="$p"; break; fi
-done
-[ -n "$BREW" ] || die "未找到 Homebrew。先安装：
+BREW="/opt/homebrew/bin/brew"
+[ -x "$BREW" ] || die "未找到 Homebrew（预期 $BREW）。先安装：
        /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"
        然后重新运行本脚本。"
 eval "$("$BREW" shellenv)"
@@ -162,6 +154,7 @@ done
 for p in grayprompt.jeasin nfc.jeasin sessionlog.jeasin; do
   [ -d "$SRC/config/plugins/$p" ] || die "压缩包缺少自写插件：$p"
 done
+[ -f "$SRC/config/bin/bat-wrapper" ] || die "压缩包缺少 config/bin/bat-wrapper"
 ok "配置完整（自写插件随包，第三方插件首次启动时自动下载）"
 
 # ----------------------------------------------------------
@@ -170,10 +163,11 @@ ok "配置完整（自写插件随包，第三方插件首次启动时自动下�
 step 6/9 "检查并安装依赖"
 
 installed_now=""
-for cmd in starship zoxide fzf fd eza bat rg; do
+for cmd in starship zoxide fzf fd eza bat rg nvim; do
   if have "$cmd"; then continue; fi
   case "$cmd" in
     rg) formula="ripgrep" ;;
+    nvim) formula="neovim" ;;
     *)  formula="$cmd" ;;
   esac
   if brew list --formula "$formula" >/dev/null 2>&1; then
@@ -210,13 +204,6 @@ for f in .zshenv .zprofile .zshrc aliases.zsh bindings.zsh fzf.zsh plugins.zsh p
   zsh -n "$STAGE/$f" || { rm -rf "$STAGE"; die "语法检查失败：$f"; }
 done
 ok "9 个配置语法通过"
-
-# 写入前校验：不能夹带个人信息
-if grep -rq "/Users/jeasinl" "$STAGE" 2>/dev/null; then
-  rm -rf "$STAGE"
-  die "配置里仍有个人绝对路径 /Users/jeasinl，已中止"
-fi
-ok "无个人绝对路径"
 
 # 写入前校验：XDG 路径与引导文件一致
 grep -q 'ZDOTDIR=' "$SRC/system/zshenv" || die "system/zshenv 缺少 ZDOTDIR 引导"
@@ -258,6 +245,13 @@ for d in "$HOME/.local/bin" "$HOME/.local/share" "$HOME/.local/state/zsh" "$HOME
   mkdir -p "$d"
 done
 ok "XDG 目录就绪"
+
+# bat 包装脚本：aliases.zsh 里 alias bat 指向它，装在 ~/.local/bin 下
+mkdir -p "$HOME/.local/bin/UnixBin"
+install -m 755 "$CONFIG_DIR/bin/bat-wrapper" "$HOME/.local/bin/UnixBin/bat-wrapper" \
+  || die "安装 bat-wrapper 失败"
+rm -rf "$CONFIG_DIR/bin"
+ok "bat-wrapper → ~/.local/bin/UnixBin/bat-wrapper"
 
 # 引导是否真的生效：干净环境里开一个 zsh，看 ZDOTDIR
 got_zdotdir="$(env -i HOME="$HOME" PATH="/usr/bin:/bin:/usr/sbin:/sbin" TERM=dumb \

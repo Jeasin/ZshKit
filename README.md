@@ -10,7 +10,7 @@ curl -fsSL https://raw.githubusercontent.com/Jeasin/ZshKit/main/install.sh | zsh
 
 ## 安装
 
-**要求**：macOS（Apple Silicon 或 Intel）、系统自带 zsh、已安装 Homebrew。
+**要求**：macOS（Apple Silicon，Homebrew 在 `/opt/homebrew`）、系统自带 zsh、已安装 Homebrew。
 
 Homebrew 没装的话先装：
 
@@ -20,9 +20,9 @@ Homebrew 没装的话先装：
 
 然后执行上面那条安装命令。全过程约 1 分钟，其中安装依赖占大头。
 
-安装脚本会：检测系统与架构（`/opt/homebrew`、`/usr/local` 都支持）→ 按需安装缺失依赖
-→ 下载 main 分支最新 tarball → 校验语法 → 原子替换配置 → 替换 `/etc/zshenv`
-→ 创建 XDG 目录 → 首次启动时顺带拉取三个第三方插件 → 退出时清理所有临时文件。
+安装脚本会：检测系统 → 补装缺失依赖 → 下载 main 分支最新 tarball → 校验语法
+→ 原子替换配置 → 替换 `/etc/zshenv` → 创建 XDG 目录 → 落地 `bat-wrapper`
+→ 首次启动时顺带拉取三个第三方插件 → 退出时清理所有临时文件。
 
 插件用 `git clone --depth=1` 拉到 `~/.config/zsh/plugins/`，所以第一次启动需要能联网
 （也需要 `git`，macOS 装的 Xcode Command Line Tools 自带）。
@@ -45,6 +45,7 @@ curl -fsSL https://raw.githubusercontent.com/Jeasin/ZshKit/main/install.sh | zsh
 | --- | --- |
 | `~/.config/zsh` | 整个目录替换。里面的自定义修改、`secrets.zsh`、`.zsh_sessions` 都会消失 |
 | `/etc/zshenv` | 整个文件替换（这是 ZDOTDIR 引导，必须的） |
+| `~/.local/bin/UnixBin/bat-wrapper` | 由安装脚本写入（`alias bat` 指向它） |
 | `~/.local/share` | 保留 |
 | `~/.local/state` | 保留（命令历史在 `~/.local/state/zsh/history`） |
 | `~/.cache` | 保留 |
@@ -55,7 +56,7 @@ curl -fsSL https://raw.githubusercontent.com/Jeasin/ZshKit/main/install.sh | zsh
 
 ## 依赖
 
-安装脚本会自动补装缺失的部分（`brew list` 已有的跳过）：
+配置假定这些命令都在（缺了不降级，直接报错），安装脚本会补装：
 
 | 命令 | formula | 用途 |
 | --- | --- | --- |
@@ -66,10 +67,17 @@ curl -fsSL https://raw.githubusercontent.com/Jeasin/ZshKit/main/install.sh | zsh
 | `eza` | eza | `ls` 系列别名 |
 | `bat` | bat | 预览、`man` 着色 |
 | `rg` | ripgrep | 搜索 |
+| `nvim` | neovim | `vim` 别名指向它 |
 
-配置里对缺失的命令都做了守卫（没有也能启动，只是对应功能不生效）。
-可选、按需自己装：`nvim`（`vim` 别名指向它）、`ffmpeg`/`flac`（`ffprobe`/`flac-min` 别名）、
-`imagemagick`（`imev`）、`mosh`、`spek`。
+别名里还用到下面这些，按需自己装（不装只是对应别名报 command not found）：
+
+```bash
+brew install ffmpeg flac imagemagick mosh uv
+brew install --cask spek
+```
+
+**前置条件**：`aliases.zsh` 里 `ssh` / `mosh` 固定走 `~/.config/ssh/config`，
+这个文件不存在的话 ssh 会直接失败，请自备（或删掉那两行别名）。
 
 ## 结构
 
@@ -86,6 +94,7 @@ ZshKit/
 │   ├── prompt.zsh          starship 初始化
 │   ├── secrets.zsh         空模板（个人密钥放这里）
 │   ├── starship.toml       提示符样式
+│   ├── bin/bat-wrapper     → 安装到 ~/.local/bin/UnixBin/
 │   └── plugins/            只有自写插件：*.jeasin
 ├── system/
 │   └── zshenv              → 安装到 /etc/zshenv
@@ -101,7 +110,7 @@ ZshKit/
 | zsh-history-substring-search | zsh-users | 同上 |
 | grayprompt.jeasin / nfc.jeasin / sessionlog.jeasin | 本仓库 | 随配置直接安装 |
 
-插件目录缺失时不影响启动，只会在 stderr 提示一行；下次开窗口会自动重试。
+插件目录缺失时，`plugins.zsh` 会当场 `git clone --depth=1`；克隆失败只提示不中断启动。
 升级上游插件：
 
 ```bash
