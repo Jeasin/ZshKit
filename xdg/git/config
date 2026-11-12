@@ -1,0 +1,72 @@
+# ==============================================================================
+# Git XDG Global Configuration
+# Path: ~/.config/git/config
+# ==============================================================================
+
+[user]
+	# TODO: 填入你的名字和邮箱（如果有 GitHub，建议填 GitHub 绑定的邮箱）
+	name = Your Name
+	email = you@example.com
+
+[init]
+	# 显式指定默认主分支名为 main，避免初始化时弹出长篇警告
+	defaultBranch = main
+
+[core]
+	# 统一换行符处理（macOS/Linux 设为 input；Windows 设为 true）
+	autocrlf = input
+	# 避免文件名大小写不敏感导致的极客灾难（特别是在 macOS/Windows 上）
+	ignorecase = false
+	# 不追踪文件的 POSIX 权限变更（避免由于 chmod 导致文件全被标红）
+	fileMode = false
+	# 确保中文文件名在 git status 中正常显示，不显示为 \344\270\255 等八进制乱码
+	quotepath = false
+	sshCommand = ssh -F ~/.config/ssh/config
+
+[color]
+	# 开启终端全色彩高亮支持
+	ui = auto
+
+[advice]
+	# --------------------------------------------------------------------------
+	# 屏蔽唠叨的初学者“保姆级提示”（Hints），大幅减少命令行冗余日志
+	# --------------------------------------------------------------------------
+	statusHints = false          # 屏蔽 status 内部的操作指引文字
+	setUpstreamFailure = false   # 屏蔽 push 上游失败时的长篇建议
+	pushNonFastForward = false   # 屏蔽 non-fast-forward 时的多余文字
+
+[pull]
+	# 规定 pull 时默认采用 rebase（变基）模式，保证历史提交线是一条干净的直线
+	rebase = true
+
+[push]
+	# 现代推荐设置：只推送当前分支到同名远程分支
+	default = simple
+	# push 新分支时自动创建远程追踪分支，不用每次都加 -u origin <branch>
+	autoSetupRemote = true
+
+# ==============================================================================
+# 极客工具箱：常用别名 (Aliases)
+# ==============================================================================
+[alias]
+	# 1. 状态与暂存
+	st = status -sb              # -sb 表示 short-branch，只打出一两行核心状态，绝无多余废话
+	a  = add
+	aa = add --all
+
+	# 2. 提交
+	c  = commit -m               # 快速提交，例：git c "feat: 改写引言"
+	ca = commit --amend          # 补充/修正上一次提交（把新修改塞进上一次 commit）
+
+	# 3. 超级精简色彩日志（终极日志神器）
+	# 用法：敲 git lg 即可展示精美的单行分支树，带颜色和相对时间
+	lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+
+	# 4. 差异对比
+	df = diff                    # 工作区 vs 暂存区
+	dfs = diff --staged          # 暂存区 vs 上一次 Commit
+
+	# 5. 撤销/找回神器
+	unstage = restore --staged   # 将文件撤出暂存区
+	undo = reset --soft HEAD~1   # 撤销上一次 commit，但把代码留在暂存区，供你重新打磨
+	last = log -1 HEAD --stat    # 查看最后一次提交的具体变更统计

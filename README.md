@@ -21,7 +21,7 @@ Homebrew 没装的话先装：
 然后执行上面那条安装命令。全过程约 1 分钟，其中安装依赖占大头。
 
 安装脚本会：检测系统 → 补装缺失依赖 → 下载 main 分支最新 tarball → 校验语法
-→ 原子替换配置 → 替换 `/etc/zshenv` → 创建 XDG 目录 → 落地 `bat-wrapper`
+→ 原子替换配置 → 替换 `/etc/zshenv` → 写入 `~/.config/{ssh,git,bat,fd}` → 创建 XDG 目录
 → 首次启动时顺带拉取三个第三方插件 → 退出时清理所有临时文件。
 
 插件用 `git clone --depth=1` 拉到 `~/.config/zsh/plugins/`，所以第一次启动需要能联网
@@ -44,8 +44,11 @@ curl -fsSL https://raw.githubusercontent.com/Jeasin/ZshKit/main/install.sh | zsh
 | 路径 | 处理 |
 | --- | --- |
 | `~/.config/zsh` | 整个目录替换。里面的自定义修改、`secrets.zsh`、`.zsh_sessions` 都会消失 |
+| `~/.config/ssh` | 整个目录替换（仓库里是模板，见下） |
+| `~/.config/git` | 整个目录替换（`user.name` / `user.email` 是占位符，装完自己填） |
+| `~/.config/bat` | 整个目录替换 |
+| `~/.config/fd` | 整个目录替换 |
 | `/etc/zshenv` | 整个文件替换（这是 ZDOTDIR 引导，必须的） |
-| `~/.local/bin/UnixBin/bat-wrapper` | 由安装脚本写入（`alias bat` 指向它） |
 | `~/.local/share` | 保留 |
 | `~/.local/state` | 保留（命令历史在 `~/.local/state/zsh/history`） |
 | `~/.cache` | 保留 |
@@ -76,8 +79,7 @@ brew install ffmpeg flac imagemagick mosh uv
 brew install --cask spek
 ```
 
-**前置条件**：`aliases.zsh` 里 `ssh` / `mosh` 固定走 `~/.config/ssh/config`，
-这个文件不存在的话 ssh 会直接失败，请自备（或删掉那两行别名）。
+**前置条件**：不需要额外准备——`ssh` / `mosh` 别名依赖的 `~/.config/ssh/config` 由安装脚本一并写入。
 
 ## 结构
 
@@ -94,8 +96,12 @@ ZshKit/
 │   ├── prompt.zsh          starship 初始化
 │   ├── secrets.zsh         空模板（个人密钥放这里）
 │   ├── starship.toml       提示符样式
-│   ├── bin/bat-wrapper     → 安装到 ~/.local/bin/UnixBin/
 │   └── plugins/            只有自写插件：*.jeasin
+├── xdg/                    → 安装到 ~/.config/<同名目录>
+│   ├── ssh/config          SSH：known_hosts 走 XDG，GitHub 走 443；服务器段是注释模板
+│   ├── git/config          Git：别名、rebase、去提示；user 段是占位符
+│   ├── bat/config          bat 默认参数
+│   └── fd/ignore           fd 默认忽略项
 ├── system/
 │   └── zshenv              → 安装到 /etc/zshenv
 └── install.sh
@@ -116,6 +122,17 @@ ZshKit/
 ```bash
 zplugin-update      # 只 pull 有 .git 的目录，*.jeasin 跳过
 ```
+
+## 与 shell 配套的配置
+
+`~/.config/{ssh,git,bat,fd}` 会跟 zsh 配置一起安装，装完覆盖原目录。注意两处是模板：
+
+- **`git/config`** 的 `user` 段是 `Your Name` / `you@example.com`，装完自己改（或 `git config --global user.name ...`）。
+- **`ssh/config`** 只保留了通用设置（`known_hosts` 放 XDG 下、GitHub 走 443）和一个注释掉的服务器示例。
+  你自己的主机、密钥路径需要按实际填。`IdentityFile` 指向的密钥不存在时，连 GitHub 会失败。
+
+`bat` 的路径解析（Finder 替身 / 软链接 → 真实路径）写在 `aliases.zsh` 里，是一个 `bat()` 函数，
+不再需要 `~/.local/bin/UnixBin/bat-wrapper`。
 
 ## 几个要知道的点
 

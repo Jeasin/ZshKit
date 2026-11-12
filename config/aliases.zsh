@@ -1,7 +1,25 @@
 # 开发与运行别名
 alias uvt="uv tool"
 alias vim='nvim'
-alias bat="${HOME}/.local/bin/UnixBin/bat-wrapper"
+
+# bat：先把 Finder 替身 / 软链接解析成真实路径，再交给真正的 bat
+bat() {
+  local arg real_path args=()
+  for arg in "$@"; do
+    if [[ -e "$arg" ]]; then
+      # macOS 替身：让 Finder 解析出真实路径
+      if [[ -f "$arg" ]] && xattr -p com.apple.FinderInfo "$arg" &>/dev/null; then
+        real_path=$(osascript -e "tell application \"Finder\" to set p to (original item of (POSIX file \"$arg\" as alias)) as alias" -e "POSIX path of p" 2>/dev/null)
+        [[ -n "$real_path" ]] && arg="$real_path"
+      # 软链接：:A 直接拿到最终目标
+      elif [[ -L "$arg" ]]; then
+        arg="${arg:A}"
+      fi
+    fi
+    args+=("$arg")
+  done
+  command bat "${args[@]}"
+}
 
 # macOS 系统控制别名
 alias iconon="defaults write com.apple.finder CreateDesktop -bool true; killall Finder"

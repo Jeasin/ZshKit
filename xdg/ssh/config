@@ -1,0 +1,20 @@
+# SSH global settings
+Host *
+    UserKnownHostsFile ~/.local/state/ssh/known_hosts
+    ServerAliveInterval 60
+
+# GitHub
+Host github.com
+    HostName ssh.github.com
+    Port 443
+    User git
+    IdentityFile ~/.local/share/ssh/github/id_ed25519_github
+    AddKeysToAgent yes
+    UseKeychain yes
+    IdentitiesOnly yes
+
+# 自己的服务器（按需取消注释并填值）
+# Host myserver
+#     HostName <IP 或域名>
+#     User <用户名>
+#     IdentityFile ~/.local/share/ssh/myserver/id_ed25519

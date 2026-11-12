@@ -61,6 +61,10 @@ printf '\n%s ZshKit%s · macOS Zsh 配置一键安装\n\n' "$C_BLUE" "$C_RESET"
 
 warn "即将覆盖以下内容，不会备份、不会合并："
 printf '       · %s\n' "$CONFIG_DIR"
+printf '       · %s\n' "$HOME/.config/ssh"
+printf '       · %s\n' "$HOME/.config/git"
+printf '       · %s\n' "$HOME/.config/bat"
+printf '       · %s\n' "$HOME/.config/fd"
 printf '       · %s/zshenv\n' "$ETC_DIR"
 warn "保留：~/.local/share、~/.local/state（含历史）、~/.cache"
 printf '\n'
@@ -154,7 +158,9 @@ done
 for p in grayprompt.jeasin nfc.jeasin sessionlog.jeasin; do
   [ -d "$SRC/config/plugins/$p" ] || die "压缩包缺少自写插件：$p"
 done
-[ -f "$SRC/config/bin/bat-wrapper" ] || die "压缩包缺少 config/bin/bat-wrapper"
+for d in ssh git bat fd; do
+  [ -d "$SRC/xdg/$d" ] || die "压缩包缺少 xdg/$d"
+done
 ok "配置完整（自写插件随包，第三方插件首次启动时自动下载）"
 
 # ----------------------------------------------------------
@@ -236,6 +242,24 @@ fi
 ETC_TMP=""
 ok "已替换 $ETC_DIR/zshenv"
 
+# ~/.config 下与 shell 配套的其它工具配置：整目录替换
+for d in ssh git bat fd; do
+  stage="$HOME/.config/.$d.zshkit-new.$$"
+  old="$HOME/.config/.$d.zshkit-old.$$"
+  rm -rf "$stage" "$old"
+  cp -R "$SRC/xdg/$d" "$stage" || die "复制 $d 配置失败"
+  [ "$d" = "ssh" ] && chmod 600 "$stage/config"
+
+  if [ -e "$HOME/.config/$d" ]; then
+    mv "$HOME/.config/$d" "$old" || { rm -rf "$stage"; die "移走 ~/.config/$d 失败"; }
+    mv "$stage" "$HOME/.config/$d" || { mv "$old" "$HOME/.config/$d"; die "替换 ~/.config/$d 失败，已回滚"; }
+    rm -rf "$old"
+  else
+    mv "$stage" "$HOME/.config/$d" || die "安装 ~/.config/$d 失败"
+  fi
+done
+ok "ssh / git / bat / fd 配置就绪"
+
 # ----------------------------------------------------------
 # 9. XDG 目录 + 验收
 # ----------------------------------------------------------
@@ -245,13 +269,6 @@ for d in "$HOME/.local/bin" "$HOME/.local/share" "$HOME/.local/state/zsh" "$HOME
   mkdir -p "$d"
 done
 ok "XDG 目录就绪"
-
-# bat 包装脚本：aliases.zsh 里 alias bat 指向它，装在 ~/.local/bin 下
-mkdir -p "$HOME/.local/bin/UnixBin"
-install -m 755 "$CONFIG_DIR/bin/bat-wrapper" "$HOME/.local/bin/UnixBin/bat-wrapper" \
-  || die "安装 bat-wrapper 失败"
-rm -rf "$CONFIG_DIR/bin"
-ok "bat-wrapper → ~/.local/bin/UnixBin/bat-wrapper"
 
 # 引导是否真的生效：干净环境里开一个 zsh，看 ZDOTDIR
 got_zdotdir="$(env -i HOME="$HOME" PATH="/usr/bin:/bin:/usr/sbin:/sbin" TERM=dumb \
